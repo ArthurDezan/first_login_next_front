@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Typography, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Paper } from "@mui/material";
 
-type Pessoa = { id: number; nome: string; idade: number; telefone: string; };
+type Pessoa = {
+  id: number;
+  nome: string;
+  idade: number;
+  telefone: string;
+};
 
 export default function PessoasPage() {
   const router = useRouter();
@@ -12,8 +17,15 @@ export default function PessoasPage() {
   const [form, setForm] = useState<Pessoa>({ id: 0, nome: "", idade: 0, telefone: "" });
   const API_URL = "http://localhost:3001/pessoas";
 
+  // Simula usuário logado
+  const usuario_id = 1; // Substitua com ID real do usuário logado
+
+  // Carregar pessoas do usuário
   useEffect(() => {
-    fetch(API_URL).then(r => r.json()).then(setPessoas).catch(console.error);
+    fetch(`${API_URL}?usuario_id=${usuario_id}`)
+      .then((r) => r.json())
+      .then(setPessoas)
+      .catch(console.error);
   }, []);
 
   const abrirModal = (p?: Pessoa) => {
@@ -24,26 +36,40 @@ export default function PessoasPage() {
 
   const salvar = async () => {
     if (form.id === 0) {
-      const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      // Adicionar pessoa
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, usuario_id }),
+      });
       const nova = await res.json();
-      setPessoas([...pessoas, nova]);
+      setPessoas(prev => [...prev, nova]); // Atualiza o estado imediatamente
     } else {
-      const res = await fetch(`${API_URL}/${form.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      // Editar pessoa
+      const res = await fetch(`${API_URL}/${form.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, usuario_id }),
+      });
       const atualizada = await res.json();
-      setPessoas(pessoas.map(p => p.id === atualizada.id ? atualizada : p));
+      setPessoas(prev => prev.map(p => (p.id === atualizada.id ? atualizada : p))); // Atualiza o estado imediatamente
     }
     fecharModal();
   };
 
   const deletar = async (id: number) => {
-    await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-    setPessoas(pessoas.filter(p => p.id !== id));
+    await fetch(`${API_URL}/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario_id }),
+    });
+    setPessoas(prev => prev.filter((p) => p.id !== id));
   };
 
   return (
     <Box sx={{ p: 5, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       
-      {/* Título e botão alinhados */}
+      {/* Título e Logout alinhados */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h4" sx={{ color: "#6a1b9a" }}>Lista de Pessoas</Typography>
         <Button variant="contained" sx={{ bgcolor: "#ab47bc" }} onClick={() => router.push("/login")}>
@@ -54,7 +80,7 @@ export default function PessoasPage() {
       <Button variant="contained" sx={{ mb: 3, bgcolor: "#6a1b9a" }} onClick={() => abrirModal()}>Adicionar Pessoa</Button>
 
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-        {pessoas.map(p => (
+        {pessoas.map((p) => (
           <Box key={p.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography>{p.nome} - {p.idade} anos - {p.telefone}</Typography>
             <Box>
@@ -65,12 +91,18 @@ export default function PessoasPage() {
         ))}
       </Paper>
 
+      {/* Modal de Adicionar/Editar */}
       <Dialog open={open} onClose={fecharModal}>
         <DialogTitle>{form.id === 0 ? "Adicionar Pessoa" : "Editar Pessoa"}</DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          <TextField label="Nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} />
-          <TextField label="Idade" value={form.idade === 0 ? "" : form.idade} onChange={e => setForm({ ...form, idade: Number(e.target.value) || 0 })} />
-          <TextField label="Telefone" value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} />
+          <TextField label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+          <TextField
+            label="Idade"
+            type="number"
+            value={form.idade === 0 ? "" : form.idade}
+            onChange={(e) => setForm({ ...form, idade: Number(e.target.value) || 0 })}
+          />
+          <TextField label="Telefone" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={fecharModal}>Cancelar</Button>
